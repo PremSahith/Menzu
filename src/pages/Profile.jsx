@@ -3,11 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { GlobalContext } from '../context/GlobalState';
 
 const Profile = () => {
-  const { logout, userProfile, addAddress, removeAddress } = useContext(GlobalContext);
+  const { logout, userProfile, addAddress, removeAddress, orders, fetchOrders } = useContext(GlobalContext);
+  const activeOrders = orders?.filter(o => o.status !== 'Delivered') || [];
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newAddr, setNewAddr] = useState({ name: '', address: '', city: '', zip: '', country: '' });
+
+  const handleDevAdvanceStatus = async (orderId, currentStatus) => {
+    const statuses = ['Ordered', 'Shipped', 'Out for Delivery', 'Delivered'];
+    const nextIdx = statuses.indexOf(currentStatus) + 1;
+    if (nextIdx < statuses.length) {
+       await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: statuses[nextIdx] })
+       });
+       if(fetchOrders) fetchOrders();
+    }
+  };
 
   const handleAddAddress = (e) => {
     e.preventDefault();
@@ -142,30 +156,40 @@ const Profile = () => {
               <section className="space-y-6">
                 <h2 className="text-2xl font-black italic tracking-tight uppercase">Active Orders</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Shipped Order Placeholder */}
-                  <div className="bg-surface-container-lowest p-6 rounded-DEFAULT border border-outline-variant/10 group transition-transform duration-300 hover:scale-[1.01]">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex gap-4">
-                        <img alt="Jacket" className="w-16 h-20 object-cover rounded shadow-lg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs1bhSwgP7TfOmS-Kzn2nprvFLZZd8WUsf6-h4NkSwHxWEwyVxM4s-JDkfaWOEEFOP-zMch_g8aMjnP6kKA-n47482PyqhUzBecdqnRPdkf3WzLl6RvrAd-0O-BhQnrpnLDVR7saEJW61vtk-LJr_9pZMP-nWbYf89jkAYwmYpRe1y9Ei-FB9CO3nEjTcqQ70Rsix8vSVaha-3NxFlLQpCrLJih3BBOS3gAsJzJg68pJVJ92mPXRbdzfM_Wd-c4HafYlEsD6T0l7U"/>
-                        <div>
-                          <div className="text-xs text-secondary uppercase tracking-widest font-bold mb-1">Order #KN-9021</div>
-                          <div className="font-black text-lg">K-Series Parka</div>
+                  {activeOrders.length > 0 ? activeOrders.map(order => {
+                    const statusSteps = ['Ordered', 'Shipped', 'Out for Delivery', 'Delivered'];
+                    const currentStepIndex = statusSteps.indexOf(order.status) === -1 ? 0 : statusSteps.indexOf(order.status);
+                    const progressWidth = `${(currentStepIndex / 3) * 100}%`;
+                    const firstItem = order.items && order.items[0];
+
+                    return (
+                      <div key={order._id} className="bg-surface-container-lowest p-6 rounded-DEFAULT border border-outline-variant/10 group transition-transform duration-300 hover:scale-[1.01]">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="flex gap-4">
+                            {firstItem && <img alt={firstItem.name} className="w-16 h-20 object-cover rounded shadow-lg" src={firstItem.image}/>}
+                            <div>
+                              <div className="text-xs text-secondary uppercase tracking-widest font-bold mb-1">Order #{order._id.substring(order._id.length - 6).toUpperCase()}</div>
+                              <div className="font-black text-lg">{firstItem?.name || 'Multiple Items'}</div>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-black uppercase tracking-widest">{order.status}</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-secondary">
+                            <span>Processing</span>
+                            <span className="text-on-surface">Transit</span>
+                            <span>Delivery</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                            <div className="h-full bg-primary transition-all duration-700" style={{ width: progressWidth }}></div>
+                          </div>
+                          <p className="text-xs text-secondary">Awaiting: <span className="text-on-surface font-bold">{statusSteps[currentStepIndex + 1] || 'Completed'}</span></p>
                         </div>
                       </div>
-                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-widest">Shipped</span>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-secondary">
-                        <span>Processing</span>
-                        <span className="text-on-surface">Transit</span>
-                        <span>Delivery</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-container w-2/3"></div>
-                      </div>
-                      <p className="text-xs text-secondary">Estimated Arrival: <span className="text-on-surface font-bold">Tomorrow, 14:00</span></p>
-                    </div>
-                  </div>
+                    )
+                  }) : (
+                    <div className="text-secondary text-sm">No active shipments right now.</div>
+                  )}
                 </div>
               </section>
 
@@ -183,16 +207,28 @@ const Profile = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/10">
-                      <tr className="group hover:bg-surface-container-low/50 transition-colors">
-                        <td className="py-6 px-2 text-sm font-medium">Oct 12, 2023</td>
-                        <td className="py-6 px-2 font-black">$442.00</td>
-                        <td className="py-6 px-2 text-secondary text-sm">Delivered</td>
-                      </tr>
-                      <tr className="group hover:bg-surface-container-low/50 transition-colors">
-                        <td className="py-6 px-2 text-sm font-medium">Sep 05, 2023</td>
-                        <td className="py-6 px-2 font-black">$189.00</td>
-                        <td className="py-6 px-2 text-secondary text-sm">Delivered</td>
-                      </tr>
+                      {orders && orders.length > 0 ? orders.map(order => (
+                        <tr key={order._id} className="group hover:bg-surface-container-low/50 transition-colors">
+                          <td className="py-6 px-2 text-sm font-medium">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="py-6 px-2 font-black">₹{order.totalPrice?.toFixed(2)}</td>
+                          <td className="py-6 px-2 text-secondary text-sm">
+                             {order.status}
+                             {order.status !== 'Delivered' && (
+                               <button 
+                                 onClick={() => handleDevAdvanceStatus(order._id, order.status)}
+                                 className="ml-4 bg-primary/20 text-primary text-[10px] px-2 py-1 rounded font-bold uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-colors"
+                                 title="Dev Tool: Advance Status"
+                               >
+                                 &gt;&gt; Fast Forward
+                               </button>
+                             )}
+                          </td>
+                        </tr>
+                      )) : (
+                         <tr>
+                            <td colSpan="3" className="py-8 text-center text-sm text-secondary">No orders yet. Start shopping to build your collection!</td>
+                         </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

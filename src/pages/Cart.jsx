@@ -1,12 +1,26 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GlobalContext } from '../context/GlobalState';
 
 const Cart = () => {
-  const { cartItems, removeFromCart } = useContext(GlobalContext);
+  const { cartItems, removeFromCart, addToCart } = useContext(GlobalContext);
   const navigate = useNavigate();
+  const [suggestions, setSuggestions] = useState([]);
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
+
+  useEffect(() => {
+    fetch('http://localhost:5001/api/products')
+      .then(r => r.json())
+      .then(all => {
+        // Exclude items already in cart, shuffle, take up to 4
+        const cartIds = cartItems.map(i => i.id);
+        const pool = all.filter(p => !cartIds.includes(p._id));
+        const shuffled = pool.sort(() => 0.5 - Math.random());
+        setSuggestions(shuffled.slice(0, 4));
+      })
+      .catch(() => {});
+  }, [cartItems]);
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
@@ -34,7 +48,7 @@ const Cart = () => {
                         <h3 className="text-2xl font-headline font-bold tracking-tight uppercase">{item.name}</h3>
                         <p className="text-secondary text-sm font-medium uppercase tracking-widest mt-1">Obsidian Black / {item.size || 'M'}</p>
                       </div>
-                      <p className="text-xl font-headline font-bold">${item.price.toFixed(2)}</p>
+                      <p className="text-xl font-headline font-bold">₹{item.price.toFixed(2)}</p>
                     </div>
                     <div className="flex justify-between items-center mt-12">
                       <div className="flex items-center bg-surface-container-low rounded-full px-4 py-1.5 gap-6">
@@ -62,7 +76,7 @@ const Cart = () => {
               <div className="space-y-4 font-body">
                 <div className="flex justify-between text-secondary">
                   <span className="font-medium">Subtotal</span>
-                  <span className="font-bold text-on-surface">${subtotal.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-secondary">
                   <span className="font-medium">Shipping</span>
@@ -70,11 +84,11 @@ const Cart = () => {
                 </div>
                 <div className="flex justify-between text-secondary">
                   <span className="font-medium">Tax</span>
-                  <span className="font-bold text-on-surface">$0.00</span>
+                  <span className="font-bold text-on-surface">₹0.00</span>
                 </div>
                 <div className="pt-6 mt-6 border-t border-outline-variant/20 flex justify-between items-end">
                   <span className="font-headline font-black uppercase tracking-tighter text-lg italic">Total Est.</span>
-                  <span className="text-4xl font-headline font-black tracking-tighter">${subtotal.toFixed(2)}</span>
+                  <span className="text-4xl font-headline font-black tracking-tighter">₹{subtotal.toFixed(2)}</span>
                 </div>
               </div>
               <button 
@@ -105,67 +119,48 @@ const Cart = () => {
           </aside>
         </div>
 
-        {/* Cross-sell Section */}
-        <section className="mt-24">
-          <div className="flex items-center gap-6 mb-12">
-            <h2 className="text-3xl font-headline font-black uppercase tracking-tighter italic">Frequently Bought Together</h2>
-            <div className="h-1 flex-grow bg-primary-container/30"></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="group relative bg-surface-container-lowest rounded-lg p-4 transition-all hover:translate-y-[-4px]">
-              <div className="aspect-square rounded overflow-hidden mb-6 bg-surface-container-low">
-                  <img alt="Sneaker" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeuRHALZYoSoSKiqP5ET8rOHvnTVVo5uVHqe9Net222_UhbeajK9u5TZ0jEF3pIC9IA1TjJG19w_qqFJiaG0QSSbiaeXOOKDqynAI0gZPqsdY8FtqyIpiynWRAuqH0DEdXkl8ystH5veKFbbT8dHATKnXsVsRFK_ODUq_kZNFc3u-e0Kxmy6eTj8OqJxz8rQ16yCa4oDKocLruEw15zxqstT_uMsxRq-0GfedJzY_-HEwJjWjDLNFeKuOTVWliG4SBwoYLpfEOULE"/>
-              </div>
-              <div className="flex justify-between items-start">
-                  <div>
-                      <h4 className="font-headline font-bold tracking-tight text-lg leading-none">MONO LEATHER SNEAKER</h4>
-                      <p className="text-secondary font-medium text-sm mt-1">$310.00</p>
-                  </div>
-                  <button className="material-symbols-outlined bg-primary-container p-2 rounded-full text-on-primary-container hover:scale-110 transition-transform">add</button>
-              </div>
+        {/* Suggestions Section */}
+        {suggestions.length > 0 && (
+          <section className="mt-24">
+            <div className="flex items-center gap-6 mb-12">
+              <h2 className="text-3xl font-headline font-black uppercase tracking-tighter italic">You Might Also Like</h2>
+              <div className="h-1 flex-grow bg-primary-container/30"></div>
             </div>
-            
-            <div className="group relative bg-surface-container-lowest rounded-lg p-4 transition-all hover:translate-y-[-4px]">
-              <div className="aspect-square rounded overflow-hidden mb-6 bg-surface-container-low">
-                  <img alt="Chain" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD36oT76gX8Qi4i7IWTl_9xo3H79c_mPgP_rzBKwylCS4dr3oa0BicvZWPHo2m3pXwVkFIdtai7uGueo9u2U2y69yrxJqlknfaCQ_uyMGekD29_87qfKxeN3uUzwBfGW4rn4bjshZSVbgawKmzqYBRucaSx_iJkjTkcluxz_Oq0lCJvWCrW3nI3d7MDQr1Qg_QFKKuZtBpaiQjmVXXpKTLq-Gf0g-7cxrTnkLprj0u7om_zVaflSQjz4g6kCRjUqZEfRgP0hobpEEw"/>
-              </div>
-              <div className="flex justify-between items-start">
-                  <div>
-                      <h4 className="font-headline font-bold tracking-tight text-lg leading-none">INDUSTRIAL LINK CHAIN</h4>
-                      <p className="text-secondary font-medium text-sm mt-1">$85.00</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {suggestions.map(p => (
+                <div
+                  key={p._id}
+                  className="group relative bg-surface-container-lowest rounded-lg p-4 transition-all hover:translate-y-[-4px] cursor-pointer"
+                  onClick={() => navigate(`/products/${p._id}`)}
+                >
+                  <div className="aspect-square rounded overflow-hidden mb-4 bg-surface-container-low">
+                    {p.image ? (
+                      <img
+                        alt={p.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        src={p.image}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-secondary">
+                        <span className="material-symbols-outlined text-4xl">image_not_supported</span>
+                      </div>
+                    )}
                   </div>
-                  <button className="material-symbols-outlined bg-primary-container p-2 rounded-full text-on-primary-container hover:scale-110 transition-transform">add</button>
-              </div>
-            </div>
-
-            <div className="group relative bg-surface-container-lowest rounded-lg p-4 transition-all hover:translate-y-[-4px]">
-              <div className="aspect-square rounded overflow-hidden mb-6 bg-surface-container-low">
-                  <img alt="Hat" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSnUAnXK6sAd49yv8OKs9IXIoTNluKdFP-sP5gsncggqKCbj8TxMXNc8GVonROVHluoTzL8pD1eKjbz9t0MhMwy4yEaFDkVcdNgll6G9dbZOiAkKGlquDNA7IBs9pmLWQ6Onza_8x0GdS7oKDJjdzoAeQXD5sQDF9i-tnjSv1uO5o8nkgIi50N8Pjb6epE0PXwJe5iFurqV2GHWaM38U0qpgUr_0wJCFGIPqBxzVlokIdx3NAh6nuQZoI-U2G7PypMbmrJoGDB9GE"/>
-              </div>
-              <div className="flex justify-between items-start">
-                  <div>
-                      <h4 className="font-headline font-bold tracking-tight text-lg leading-none">CORE BUCKET HAT</h4>
-                      <p className="text-secondary font-medium text-sm mt-1">$55.00</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold tracking-tight text-sm leading-tight">{p.title}</h4>
+                      <p className="text-secondary font-medium text-xs mt-1">₹{parseFloat(p.price).toFixed(2)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); addToCart({ id: p._id, name: p.title, price: p.price, image: p.image, size: p.sizes?.[0] || 'M', quantity: 1 }); }}
+                      className="material-symbols-outlined bg-primary-container p-2 rounded-full text-on-primary-container hover:scale-110 transition-transform flex-shrink-0"
+                    >add</button>
                   </div>
-                  <button className="material-symbols-outlined bg-primary-container p-2 rounded-full text-on-primary-container hover:scale-110 transition-transform">add</button>
-              </div>
+                </div>
+              ))}
             </div>
-
-            <div className="group relative bg-surface-container-lowest rounded-lg p-4 transition-all hover:translate-y-[-4px]">
-              <div className="aspect-square rounded overflow-hidden mb-6 bg-surface-container-low">
-                  <img alt="Socks" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmbiI3Of7VlDQgFATqD-AxH_jZfE6bcHHUj91tnRVI74uqmuSecHIWC_qob9QPZ9goqGZmzww7KjoI0kdIneGHESrZ_Huj22p7bcElnh8E7HE6Isq8pd6w6BW-_kujUiuoXBCjldqoR-GgDdDsJJmNC7RQF7U66d6EvJb7uUustHm2vlwsLXsWk9L9xxLuHM8WVhi0U8xOb8X9nyq_EBgDlVwxnKnw2veFfFXLcqwbk8xouX9vYN8NmqGXHzpXppeQioe6-OC-DOk"/>
-              </div>
-              <div className="flex justify-between items-start">
-                  <div>
-                      <h4 className="font-headline font-bold tracking-tight text-lg leading-none">EDITORIAL CREW SOCKS</h4>
-                      <p className="text-secondary font-medium text-sm mt-1">$25.00</p>
-                  </div>
-                  <button className="material-symbols-outlined bg-primary-container p-2 rounded-full text-on-primary-container hover:scale-110 transition-transform">add</button>
-              </div>
-            </div>
-
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
       {/* Footer */}

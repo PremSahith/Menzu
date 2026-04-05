@@ -18,6 +18,9 @@ export const GlobalProvider = ({ children }) => {
   // Shopping Cart
   const [cartItems, setCartItems] = useState([]);
 
+  // Orders
+  const [orders, setOrders] = useState([]);
+
   // Boot check for JWT token and saved user info
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -60,6 +63,44 @@ export const GlobalProvider = ({ children }) => {
        setCartItems([]);
     }
   }, [isAuthenticated, userProfile._id]);
+
+  // Fetch active MongoDB Orders on mount
+  useEffect(() => {
+    if (isAuthenticated && userProfile._id) {
+      fetch(`http://localhost:5001/api/orders/user/${userProfile._id}`)
+        .then(res => res.json())
+        .then(data => setOrders(Array.isArray(data) ? data : []))
+        .catch(console.error);
+    } else {
+       setOrders([]);
+    }
+  }, [isAuthenticated, userProfile._id]);
+
+  const fetchOrders = () => {
+    if (isAuthenticated && userProfile._id) {
+      fetch(`http://localhost:5001/api/orders/user/${userProfile._id}`)
+        .then(res => res.json())
+        .then(data => setOrders(Array.isArray(data) ? data : []))
+        .catch(console.error);
+    }
+  };
+
+  const createOrder = async (orderData) => {
+      try {
+          const res = await fetch("http://localhost:5001/api/orders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(orderData)
+          });
+          if (res.ok) {
+              setCartItems([]);
+              fetchOrders();
+              return await res.json();
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
 
   // Methods
   const registerUser = async (name, email, password) => {
@@ -154,20 +195,43 @@ export const GlobalProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = (id) => {
+  const removeFromCart = async (id) => {
     setCartItems((prev) => prev.filter(item => item.id !== id));
-    // optionally: sync delete to backend
+    
+    if (isAuthenticated && userProfile._id) {
+      try {
+        await fetch('http://localhost:5001/api/cart/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userProfile._id, productId: id })
+        });
+      } catch (error) {
+        console.error("Cart API Error: Failed to remove from database.", error);
+      }
+    }
   };
 
-  const updateQuantity = (id, delta) => {
+  const updateQuantity = async (id, delta) => {
+    let newQuantity = 1;
     setCartItems((prev) => prev.map(item => {
       if (item.id === id) {
-        const newQ = item.quantity + delta;
-        return { ...item, quantity: newQ > 0 ? newQ : 1 };
+        newQuantity = item.quantity + delta > 0 ? item.quantity + delta : 1;
+        return { ...item, quantity: newQuantity };
       }
       return item;
     }));
-    // optionally: sync quantity to backend
+    
+    if (isAuthenticated && userProfile._id) {
+      try {
+        await fetch('http://localhost:5001/api/cart/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userProfile._id, productId: id, quantity: newQuantity })
+        });
+      } catch (error) {
+        console.error("Cart API Error: Failed to update quantity in database.", error);
+      }
+    }
   };
 
   const toggleSelection = (id) => {
@@ -253,7 +317,10 @@ export const GlobalProvider = ({ children }) => {
         updateAddress,
         removeAddress,
         showLoginModal,
-        setShowLoginModal
+        setShowLoginModal,
+        orders,
+        fetchOrders,
+        createOrder
       }}
     >
       {children}

@@ -3,28 +3,115 @@ import { useNavigate } from 'react-router-dom';
 import { GlobalContext } from '../context/GlobalState';
 
 const Payment = () => {
-  const { getCartTotal, cartItems, userProfile } = useContext(GlobalContext);
+  const { getCartTotal, cartItems, userProfile, addAddress, createOrder } = useContext(GlobalContext);
   const navigate = useNavigate();
   
   const [activeStep, setActiveStep] = useState(1);
   const [selectedAddress, setSelectedAddress] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Address logic
+  const addresses = userProfile?.addresses || [];
+  const [addingAddress, setAddingAddress] = useState(addresses.length === 0);
+  const [newAddr, setNewAddr] = useState({ name: '', address: '', city: '', zip: '', country: '' });
 
   const total = getCartTotal() || 0;
   const shipping = total > 0 ? 15.00 : 0;
   const tax = total * 0.08;
   const grandTotal = total + shipping + tax;
 
-  // Mock addresses if context is empty
-  const addresses = userProfile?.addresses?.length > 0 ? userProfile.addresses : [
-    { id: '1', name: 'Julian Voss', address: 'Prinsengracht 263-267', city: 'Amsterdam', country: 'NL', zip: '1016 GV' },
-    { id: '2', name: 'Julian Voss', address: 'Keizersgracht 401', city: 'Amsterdam', country: 'NL', zip: '1016 EK' }
-  ];
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
-    setIsSuccess(true);
+
+    if (paymentMethod === 'razorpay') {
+      const res = await loadRazorpayScript();
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        return;
+      }
+
+      try {
+        // Amount needs to be in smallest currency unit (paise/cents)
+        const orderAmount = Math.round(grandTotal * 100);
+        const result = await fetch("http://localhost:5001/api/payments/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: orderAmount })
+        });
+
+        if (!result.ok) throw new Error("Server Error creating Razorpay order");
+
+        const orderData = await result.json();
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "Menzu E-Commerce",
+          description: "Order Checkout",
+          order_id: orderData.id,
+          handler: async function (response) {
+              console.log("Payment Successful:", response);
+              
+              const chosenAddress = addresses.find(a => a._id === selectedAddress) || addresses[0] || {};
+              const orderData = {
+                  userId: userProfile._id,
+                  orderItems: buyingItems.map(item => ({
+                      name: item.name,
+                      price: parseFloat(item.price),
+                      quantity: item.quantity,
+                      image: item.image || item.imageUrl,
+                      size: item.size,
+                      product: item.id
+                  })),
+                  shippingAddress: {
+                      name: chosenAddress.name || userProfile.name,
+                      address: chosenAddress.address || "",
+                      city: chosenAddress.city || "",
+                      zip: chosenAddress.zip || "",
+                      country: chosenAddress.country || ""
+                  },
+                  paymentMethod: paymentMethod,
+                  taxPrice: tax,
+                  shippingPrice: shipping,
+                  totalPrice: grandTotal,
+                  isPaid: true
+              };
+
+              await createOrder(orderData);
+              setIsSuccess(true);
+          },
+          prefill: {
+              name: userProfile?.name || "",
+              email: userProfile?.email || "",
+              contact: "9999999999",
+          },
+          theme: {
+              color: "#1a1a1a",
+          },
+        };
+
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.open();
+
+      } catch (err) {
+        console.error(err);
+        alert("Failed to initialize Razorpay payment. Check backend logs.");
+      }
+    } else {
+      setIsSuccess(true);
+    }
   };
 
   if (isSuccess) {
@@ -72,36 +159,85 @@ const Payment = () => {
               
               {activeStep === 1 && (
                 <div className="p-8 bg-surface-container-lowest">
-                  <div className="space-y-4">
-                    {addresses.map((addr) => (
-                      <label key={addr.id} className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedAddress === addr.id ? 'border-primary bg-primary-container/10' : 'border-outline-variant/30 hover:border-outline-variant'}`}>
-                        <div className="flex items-center h-5 mt-1">
-                          <input 
-                            type="radio" 
-                            name="address" 
-                            className="w-4 h-4 text-primary bg-surface border-outline focus:ring-primary focus:ring-2"
-                            checked={selectedAddress === addr.id}
-                            onChange={() => setSelectedAddress(addr.id)}
-                          />
+                  {addingAddress || addresses.length === 0 ? (
+                    <form className="space-y-4" onSubmit={async (e) => {
+                      e.preventDefault();
+                      await addAddress(newAddr);
+                      setAddingAddress(false);
+                      setNewAddr({ name: '', address: '', city: '', zip: '', country: '' });
+                    }}>
+                      <h3 className="font-bold uppercase tracking-widest text-sm mb-4">Add a New Delivery Address</h3>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">Full Name</label>
+                        <input required type="text" value={newAddr.name} onChange={e => setNewAddr({...newAddr, name: e.target.value})} className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">Address</label>
+                        <input required type="text" value={newAddr.address} onChange={e => setNewAddr({...newAddr, address: e.target.value})} className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">City</label>
+                           <input required type="text" value={newAddr.city} onChange={e => setNewAddr({...newAddr, city: e.target.value})} className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
                         </div>
-                        <div className="flex-1">
-                          <div className="font-bold mb-1">{addr.name}</div>
-                          <div className="text-sm text-secondary leading-relaxed">
-                            {addr.address}<br/>
-                            {addr.city}, {addr.zip}<br/>
-                            {addr.country}
-                          </div>
+                        <div>
+                           <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">ZIP Code</label>
+                           <input required type="text" value={newAddr.zip} onChange={e => setNewAddr({...newAddr, zip: e.target.value})} className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
                         </div>
-                      </label>
-                    ))}
-                  </div>
-                  <button 
-                    disabled={!selectedAddress}
-                    onClick={() => setActiveStep(2)} 
-                    className="mt-8 bg-on-surface text-surface px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Use this Address
-                  </button>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">Country</label>
+                        <input required type="text" value={newAddr.country} onChange={e => setNewAddr({...newAddr, country: e.target.value})} className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
+                      </div>
+                      <div className="flex items-center gap-4 mt-8 pt-4">
+                        <button type="submit" className="bg-on-surface text-surface px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-secondary transition-all">Save Address</button>
+                        {addresses.length > 0 && (
+                          <button type="button" onClick={() => setAddingAddress(false)} className="text-secondary hover:text-on-surface font-bold uppercase tracking-widest text-xs transition-colors">Cancel</button>
+                        )}
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        {addresses.map((addr) => (
+                          <label key={addr._id} className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedAddress === addr._id ? 'border-primary bg-primary-container/10' : 'border-outline-variant/30 hover:border-outline-variant'}`}>
+                            <div className="flex items-center h-5 mt-1">
+                              <input 
+                                type="radio" 
+                                name="address" 
+                                className="w-4 h-4 text-primary bg-surface border-outline focus:ring-primary focus:ring-2"
+                                checked={selectedAddress === addr._id}
+                                onChange={() => setSelectedAddress(addr._id)}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-bold mb-1">{addr.name}</div>
+                              <div className="text-sm text-secondary leading-relaxed">
+                                {addr.address}<br/>
+                                {addr.city}, {addr.zip}<br/>
+                                {addr.country}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-4 mt-8">
+                        <button 
+                          disabled={!selectedAddress}
+                          onClick={() => setActiveStep(2)} 
+                          className="bg-on-surface text-surface px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          Use this Address
+                        </button>
+                        <button 
+                          onClick={() => setAddingAddress(true)}
+                          className="text-primary hover:text-on-surface font-bold uppercase tracking-widest text-xs transition-colors"
+                        >
+                          + Add New Address
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -129,9 +265,9 @@ const Payment = () => {
                       <span className="material-symbols-outlined mb-1 text-2xl">qr_code_scanner</span>
                       UPI / Wallet
                     </button>
-                    <button onClick={() => setPaymentMethod('nbi')} className={`flex flex-col items-center gap-2 p-4 border-2 rounded-lg font-bold text-sm transition-colors ${paymentMethod === 'nbi' ? 'border-primary bg-primary-container/10 text-primary' : 'border-outline-variant/30 text-secondary hover:border-outline-variant'}`}>
-                      <span className="material-symbols-outlined mb-1 text-2xl">account_balance</span>
-                      Net Banking
+                    <button onClick={() => setPaymentMethod('razorpay')} className={`flex flex-col items-center gap-2 p-4 border-2 rounded-lg font-bold text-sm transition-colors ${paymentMethod === 'razorpay' ? 'border-primary bg-primary-container/10 text-primary' : 'border-outline-variant/30 text-secondary hover:border-outline-variant'}`}>
+                      <span className="material-symbols-outlined mb-1 text-2xl">account_balance_wallet</span>
+                      Razorpay
                     </button>
                   </div>
 
@@ -149,7 +285,7 @@ const Payment = () => {
                           </div>
                           <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">CVV</label>
-                            <input required type="password" placeholder="123" className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
+                            <input required type="password" placeholder="***" className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none" />
                           </div>
                         </div>
                         <div>
@@ -166,15 +302,17 @@ const Payment = () => {
                        </div>
                     )}
 
-                    {paymentMethod === 'nbi' && (
-                       <div>
-                         <label className="block text-xs font-bold uppercase tracking-widest text-secondary mb-2">Select Bank</label>
-                         <select required className="w-full bg-surface-container border border-outline-variant/30 rounded px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none appearance-none">
-                            <option value="">Choose Bank</option>
-                            <option value="sbi">State Bank of India</option>
-                            <option value="icici">ICICI Bank</option>
-                            <option value="hdfc">HDFC Bank</option>
-                         </select>
+                    {paymentMethod === 'razorpay' && (
+                       <div className="bg-surface-container border border-outline-variant/30 rounded-lg p-8 text-center space-y-4">
+                         <p className="text-secondary text-sm font-medium">Pay securely using Cards, UPI, or NetBanking.</p>
+                         <div className="flex justify-center items-center gap-6 text-secondary/40 py-4">
+                             <span className="material-symbols-outlined text-[40px]">credit_card</span>
+                             <span className="material-symbols-outlined text-[40px]">qr_code_scanner</span>
+                             <span className="material-symbols-outlined text-[40px]">account_balance</span>
+                         </div>
+                         <div className="bg-primary/5 text-primary px-4 py-2 rounded-full inline-block text-xs font-bold uppercase tracking-widest border border-primary/20">
+                           <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">verified</span> Razorpay Ready</span>
+                         </div>
                        </div>
                     )}
                     
@@ -203,7 +341,7 @@ const Payment = () => {
                        <div className="flex-1">
                           <h4 className="font-bold">{item.name}</h4>
                           <p className="text-xs text-secondary mb-1">Qty: {item.quantity}</p>
-                          <p className="font-black">${parseFloat(item.price).toFixed(2)}</p>
+                          <p className="font-black">₹{parseFloat(item.price).toFixed(2)}</p>
                        </div>
                     </div>
                   ))}
@@ -223,22 +361,22 @@ const Payment = () => {
               <div className="space-y-4 mb-6 text-sm">
                 <div className="flex justify-between text-secondary">
                   <span>Items ({buyingItems.reduce((a,b) => a+(b.quantity||1), 0)}):</span>
-                  <span className="font-bold text-on-surface">${total.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface">₹{total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-secondary">
                   <span>Shipping & handling:</span>
-                  <span className="font-bold text-on-surface">${shipping.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface">₹{shipping.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-secondary">
                   <span>Estimated Tax:</span>
-                  <span className="font-bold text-on-surface">${tax.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface">₹{tax.toFixed(2)}</span>
                 </div>
               </div>
               
               <div className="border-t border-outline-variant/20 pt-6 mb-8">
                 <div className="flex justify-between items-center text-xl text-primary">
                   <span className="font-bold uppercase tracking-widest text-xs">Total</span>
-                  <span className="font-black italic tracking-tighter">${grandTotal.toFixed(2)}</span>
+                  <span className="font-black italic tracking-tighter">₹{grandTotal.toFixed(2)}</span>
                 </div>
               </div>
 

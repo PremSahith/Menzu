@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { GlobalContext } from '../context/GlobalState';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { orders, isAuthenticated } = useContext(GlobalContext);
+  const activeOrders = orders?.filter(o => o.status !== 'Delivered') || [];
   const [latestProducts, setLatestProducts] = useState([]);
 
   useEffect(() => {
@@ -73,8 +76,58 @@ const LandingPage = () => {
           </div>
         </section>
 
+        {/* Active Order Tracking */}
+        {isAuthenticated && activeOrders.length > 0 && (
+          <section className="py-12 px-8 max-w-7xl mx-auto border-t border-outline-variant/10">
+            <h2 className="text-2xl font-black tracking-tighter uppercase mb-8">Active Shipments</h2>
+            <div className="space-y-6">
+              {activeOrders.map(order => {
+                 const statusSteps = ['Ordered', 'Shipped', 'Out for Delivery', 'Delivered'];
+                 const currentStepIndex = statusSteps.indexOf(order.status) === -1 ? 0 : statusSteps.indexOf(order.status);
+                 
+                 return (
+                    <div key={order._id} className="bg-surface-container border border-outline-variant/30 rounded-lg p-8 shadow-sm">
+                       <div className="flex justify-between items-center mb-8">
+                         <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-secondary">Order ID</p>
+                            <p className="font-mono text-sm">{order._id}</p>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-xs font-bold uppercase tracking-widest text-secondary">Total</p>
+                            <p className="font-black text-primary">₹{order.totalPrice?.toFixed(2)}</p>
+                         </div>
+                       </div>
+                       
+                       {/* Timeline visual */}
+                       <div className="relative mt-4">
+                         <div className="absolute top-4 left-4 w-[calc(100%-2rem)] h-1 bg-outline-variant/20 -translate-y-1/2 rounded-full hidden md:block"></div>
+                         <div className="absolute top-4 left-4 h-1 bg-primary -translate-y-1/2 rounded-full hidden md:block transition-all duration-700" style={{ width: `calc(${(currentStepIndex / 3) * 100}% - 2rem)` }}></div>
+                         
+                         <div className="flex flex-col md:flex-row justify-between relative z-10 gap-6 md:gap-0">
+                           {statusSteps.map((step, idx) => {
+                             const isCompleted = idx <= currentStepIndex;
+                             const isActive = idx === currentStepIndex;
+                             
+                             return (
+                               <div key={step} className={`flex flex-col md:items-center ${isCompleted ? 'text-primary' : 'text-secondary/50'}`}>
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs mb-3 border-2 ring-[6px] ring-surface-container transition-colors ${isCompleted ? 'bg-primary text-on-primary border-primary' : 'bg-surface border-outline-variant'}`}>
+                                    {isCompleted ? <span className="material-symbols-outlined text-[16px]">check</span> : idx + 1}
+                                  </div>
+                                  <span className={`text-xs font-bold uppercase tracking-widest ${isActive ? 'text-on-surface' : ''}`}>{step}</span>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
+                    </div>
+                 );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* New Arrivals: Bento Grid Layout */}
-        <section className="py-24 px-8 max-w-7xl mx-auto">
+        <section className="py-12 md:py-24 px-8 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div>
               <span className="text-primary font-bold tracking-[0.2em] uppercase text-sm block mb-2">The Latest Drop</span>
@@ -92,7 +145,7 @@ const LandingPage = () => {
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">{prod.title}</h3>
                 <p className="text-secondary mb-2">{prod.category} • {prod.description}</p>
-                <span className="text-lg font-black">${prod.price}</span>
+                <span className="text-lg font-black">₹{prod.price}</span>
               </div>
             ))}
           </div>

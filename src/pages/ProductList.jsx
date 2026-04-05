@@ -127,8 +127,8 @@ const ProductList = ({ category }) => {
                 onChange={(e) => setPriceRange(Number(e.target.value))}
               />
               <div className="flex justify-between text-sm font-medium text-on-surface">
-                <span>$500</span>
-                <span>${priceRange === 2500 ? '2500+' : priceRange}</span>
+                <span>₹500</span>
+                <span>₹{priceRange === 2500 ? '2500+' : priceRange}</span>
               </div>
             </div>
           </div>
@@ -226,7 +226,7 @@ const ProductList = ({ category }) => {
                         ★★★★<span className="text-secondary">★</span>
                       </div>
                     </div>
-                    <span className="text-lg font-black tracking-tighter">${parseFloat(product.price).toFixed(2)}</span>
+                    <span className="text-lg font-black tracking-tighter">₹{parseFloat(product.price).toFixed(2)}</span>
                   </div>
                 </div>
               ))
