@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GlobalContext } from '../context/GlobalState';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
-// Use environment variable in a real app, placeholder for now based on implementation plan
-const GOOGLE_CLIENT_ID = "516499370400-3434dhbhs2g8c9ak0dd6m01mbgrmao61.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const Navbar = () => {
   const { isAuthenticated, getCartItemCount, loginUser, registerUser, googleLoginUser, showLoginModal, setShowLoginModal } = useContext(GlobalContext);
