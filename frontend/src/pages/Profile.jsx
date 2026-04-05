@@ -14,7 +14,7 @@ const Profile = () => {
     const statuses = ['Ordered', 'Shipped', 'Out for Delivery', 'Delivered'];
     const nextIdx = statuses.indexOf(currentStatus) + 1;
     if (nextIdx < statuses.length) {
-       await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+       await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/orders/${orderId}/status`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: statuses[nextIdx] })

@@ -40,7 +40,7 @@ export const GlobalProvider = ({ children }) => {
   // Fetch active MongoDB Cart on mount or after login
   useEffect(() => {
     if (isAuthenticated && userProfile._id) {
-      fetch(`http://localhost:5001/api/cart/${userProfile._id}`)
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/cart/${userProfile._id}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.items) {
@@ -67,7 +67,7 @@ export const GlobalProvider = ({ children }) => {
   // Fetch active MongoDB Orders on mount
   useEffect(() => {
     if (isAuthenticated && userProfile._id) {
-      fetch(`http://localhost:5001/api/orders/user/${userProfile._id}`)
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/orders/user/${userProfile._id}`)
         .then(res => res.json())
         .then(data => setOrders(Array.isArray(data) ? data : []))
         .catch(console.error);
@@ -78,7 +78,7 @@ export const GlobalProvider = ({ children }) => {
 
   const fetchOrders = () => {
     if (isAuthenticated && userProfile._id) {
-      fetch(`http://localhost:5001/api/orders/user/${userProfile._id}`)
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/orders/user/${userProfile._id}`)
         .then(res => res.json())
         .then(data => setOrders(Array.isArray(data) ? data : []))
         .catch(console.error);
@@ -87,7 +87,7 @@ export const GlobalProvider = ({ children }) => {
 
   const createOrder = async (orderData) => {
       try {
-          const res = await fetch("http://localhost:5001/api/orders", {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/orders`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(orderData)
@@ -105,7 +105,7 @@ export const GlobalProvider = ({ children }) => {
   // Methods
   const registerUser = async (name, email, password) => {
     try {
-      const res = await fetch("http://localhost:5001/api/auth/register", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password })
@@ -124,7 +124,7 @@ export const GlobalProvider = ({ children }) => {
 
   const loginUser = async (email, password) => {
     try {
-      const res = await fetch("http://localhost:5001/api/auth/login", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -143,7 +143,7 @@ export const GlobalProvider = ({ children }) => {
 
   const googleLoginUser = async (credential) => {
     try {
-      const res = await fetch("http://localhost:5001/api/auth/google", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential })
@@ -185,7 +185,7 @@ export const GlobalProvider = ({ children }) => {
 
     // 2. Persist synchronously to MongoDB via Express
     try {
-      await fetch('http://localhost:5001/api/cart/add', {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/cart/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userProfile._id, productId: product.id })
@@ -200,7 +200,7 @@ export const GlobalProvider = ({ children }) => {
     
     if (isAuthenticated && userProfile._id) {
       try {
-        await fetch('http://localhost:5001/api/cart/remove', {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/cart/remove`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userProfile._id, productId: id })
@@ -223,7 +223,7 @@ export const GlobalProvider = ({ children }) => {
     
     if (isAuthenticated && userProfile._id) {
       try {
-        await fetch('http://localhost:5001/api/cart/update', {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/cart/update`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userProfile._id, productId: id, quantity: newQuantity })
@@ -253,7 +253,7 @@ export const GlobalProvider = ({ children }) => {
   const addAddress = async (address) => {
     if (!isAuthenticated || !userProfile._id) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${userProfile._id}/addresses`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/users/${userProfile._id}/addresses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(address)
@@ -281,7 +281,7 @@ export const GlobalProvider = ({ children }) => {
   const removeAddress = async (id) => {
     if (!isAuthenticated || !userProfile._id) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${userProfile._id}/addresses/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/users/${userProfile._id}/addresses/${id}`, {
         method: "DELETE"
       });
       if (res.ok) {

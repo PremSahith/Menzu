@@ -14,7 +14,7 @@ const ProductDetails = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:5001/api/products/${id}`)
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products/${id}`)
       .then(res => res.json())
       .then(data => {
         setProduct(data);
@@ -23,7 +23,7 @@ const ProductDetails = () => {
 
         // Fetch related products from same category, exclude current
         if (data.category) {
-          fetch(`http://localhost:5001/api/products?category=${data.category}`)
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products?category=${data.category}`)
             .then(r => r.json())
             .then(all => setRelatedProducts(all.filter(p => p._id !== data._id).slice(0, 4)))
             .catch(() => {});

@@ -10,7 +10,7 @@ const Cart = () => {
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/products')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products`)
       .then(r => r.json())
       .then(all => {
         // Exclude items already in cart, shuffle, take up to 4

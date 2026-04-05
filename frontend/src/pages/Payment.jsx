@@ -44,7 +44,7 @@ const Payment = () => {
       try {
         // Amount needs to be in smallest currency unit (paise/cents)
         const orderAmount = Math.round(grandTotal * 100);
-        const result = await fetch("http://localhost:5001/api/payments/order", {
+        const result = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/payments/order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: orderAmount })

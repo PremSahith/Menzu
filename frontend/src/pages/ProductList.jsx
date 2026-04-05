@@ -63,8 +63,8 @@ const ProductList = ({ category }) => {
 
   useEffect(() => {
     const url = category
-      ? `http://localhost:5001/api/products?category=${category}`
-      : 'http://localhost:5001/api/products';
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products?category=${category}`
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products`;
     fetch(url)
       .then(res => res.json())
       .then(data => {

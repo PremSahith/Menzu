@@ -9,7 +9,7 @@ const LandingPage = () => {
   const [latestProducts, setLatestProducts] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/products')
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/products`)
       .then(res => res.json())
       .then(data => {
         // Grab the last 4 added items
