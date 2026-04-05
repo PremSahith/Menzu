@@ -1,0 +1,34 @@
+[
+  {
+    "title": "Obsidian Heavy Hoodie",
+    "description": "500GSM pigment dyed heavy hoodie.",
+    "price": 125,
+    "image": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80&w=800",
+    "category": "Hoodie",
+    "sizes": ["M", "L", "XL"]
+  },
+  {
+    "title": "Washed Graphic Tee",
+    "description": "Vintage washed graphic organic tee.",
+    "price": 55,
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800",
+    "category": "T-shirt",
+    "sizes": ["S", "M", "L", "XL"]
+  },
+  {
+    "title": "Ecru Essential T-Shirt",
+    "description": "Premium mid-weight blank tee.",
+    "price": 45,
+    "image": "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&q=80&w=800",
+    "category": "T-shirt",
+    "sizes": ["S", "M", "L"]
+  },
+  {
+    "title": "Crimson Box-Fit Hoodie",
+    "description": "Cropped box-fit fleece hoodie.",
+    "price": 115,
+    "image": "https://images.unsplash.com/photo-1572495641004-28421ae52e52?auto=format&fit=crop&q=80&w=800",
+    "category": "Hoodie",
+    "sizes": ["M", "L", "XL"]
+  }
+]
